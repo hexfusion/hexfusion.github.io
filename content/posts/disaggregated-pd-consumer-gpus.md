@@ -1,7 +1,7 @@
 ---
 title: "Disaggregated Prefill/Decode on Consumer GPUs"
 date: 2026-03-14
-draft: true
+draft: false
 tags: ["llm-d", "inference", "rdma", "vllm", "gpu", "bare-metal"]
 summary: "Running llm-d's disaggregated prefill/decode architecture across an RTX 3060 and a Tesla T4 connected by 25GbE RDMA. What worked, what broke, and what I learned about KV cache transfer at the edge of what consumer hardware can do."
 ---

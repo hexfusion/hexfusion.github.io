@@ -1,13 +1,14 @@
 baseURL = 'https://hexfusion.io/'
 languageCode = 'en-us'
-title = 'hexfusion'
+title = 'hexfusion - Sam Batschelet'
 theme = 'PaperMod'
 [pagination]
   pagerSize = 10
 
 [params]
   env = 'production'
-  description = 'Distributed systems, LLM inference, edge and Kubernetes from the infrastructure side.'
+  description = 'Sam Batschelet - Distributed systems engineer at Red Hat. Writing about LLM inference, Kubernetes, RDMA, and AI infrastructure from the systems side.'
+  keywords = ['Sam Batschelet', 'hexfusion', 'llm-d', 'Red Hat', 'distributed systems', 'LLM inference', 'Kubernetes', 'RDMA', 'vLLM', 'AI infrastructure']
   author = 'Sam Batschelet'
   ShowReadingTime = true
   ShowPostNavLinks = true
@@ -17,12 +18,29 @@ theme = 'PaperMod'
   defaultTheme = 'auto'
 
   [params.homeInfoParams]
-    Title = 'hexfusion'
-    Content = 'Distributed systems engineer writing about LLM inference infrastructure, Kubernetes, and building things at the edge.'
+    Title = "Hey, I'm Sam Batschelet"
+    Content = """
+Distributed systems engineer at Red Hat, working on [llm-d](https://github.com/llm-d), open source Kubernetes-native distributed LLM inference.
+
+Writing about AI infrastructure from the systems side, maximizing inference on the hardware you have, and learning in public.
+"""
+
+  [params.fuseOpts]
+    isCaseSensitive = false
+    shouldSort = true
+    location = 0
+    distance = 1000
+    threshold = 0.4
+    minMatchCharLength = 0
+    keys = ['title', 'permalink', 'summary', 'content']
 
   [[params.socialIcons]]
     name = 'github'
     url = 'https://github.com/hexfusion'
+
+  [[params.socialIcons]]
+    name = 'rss'
+    url = '/index.xml'
 
 [menu]
   [[menu.main]]
