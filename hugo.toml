@@ -20,11 +20,7 @@ theme = 'PaperMod'
 
   [params.homeInfoParams]
     Title = "Sam Batschelet"
-    Content = """
-Distributed systems engineer at Red Hat, building [llm-d](https://github.com/llm-d). Previously etcd, OpenShift, Flight Control.
-
-Writing about LLM inference, RDMA, and Kubernetes from the systems side.
-"""
+    Content = "Distributed systems engineer at Red Hat, building [llm-d](https://github.com/llm-d). Previously etcd, OpenShift, Flight Control. Writing about LLM inference, RDMA, and Kubernetes from the systems side."
 
   [params.fuseOpts]
     isCaseSensitive = false
