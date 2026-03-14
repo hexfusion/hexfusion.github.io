@@ -2,38 +2,38 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://hexfusion.io/tags/bare-metal/</loc>
+    <loc>http://localhost:1314/tags/bare-metal/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://hexfusion.io/posts/disaggregated-pd-consumer-gpus/</loc>
+    <loc>http://localhost:1314/posts/disaggregated-pd-consumer-gpus/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://hexfusion.io/tags/gpu/</loc>
+    <loc>http://localhost:1314/tags/gpu/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://hexfusion.io/</loc>
+    <loc>http://localhost:1314/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://hexfusion.io/tags/inference/</loc>
+    <loc>http://localhost:1314/tags/inference/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://hexfusion.io/tags/llm-d/</loc>
+    <loc>http://localhost:1314/tags/llm-d/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://hexfusion.io/posts/</loc>
+    <loc>http://localhost:1314/posts/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://hexfusion.io/tags/rdma/</loc>
+    <loc>http://localhost:1314/tags/rdma/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://hexfusion.io/tags/</loc>
+    <loc>http://localhost:1314/tags/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://hexfusion.io/tags/vllm/</loc>
+    <loc>http://localhost:1314/tags/vllm/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://hexfusion.io/about/</loc>
+    <loc>http://localhost:1314/about/</loc>
   </url><url>
-    <loc>https://hexfusion.io/categories/</loc>
+    <loc>http://localhost:1314/categories/</loc>
   </url>
 </urlset>

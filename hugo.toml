@@ -15,6 +15,7 @@ theme = 'PaperMod'
   ShowBreadCrumbs = true
   ShowCodeCopyButtons = true
   ShowToc = true
+  ShowShareButtons = false
   defaultTheme = 'auto'
 
   [params.homeInfoParams]

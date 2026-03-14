@@ -12,7 +12,7 @@ That instinct, to understand systems by *building* them, is what led me to set u
 
 ## The Goal
 
-Get a bare-minimum working example of llm-d's disaggregated prefill/decode architecture with RDMA-based KV cache transfer between two physical nodes. Not a benchmark. Not a production deployment. Just proof that the full stack works end-to-end on hardware you can buy on eBay.
+Get a bare-minimum working example of llm-d's disaggregated prefill/decode architecture with RDMA-based KV cache transfer between two physical nodes. Not a benchmark. Not a production deployment. Just proof that the full stack works end-to-end on used hardware you can buy on eBay.
 
 ## Choosing the Hardware
 
@@ -106,6 +106,8 @@ I hit one naming evolution that caused confusion: `kgateway` was rebranded to `a
 
 ## Disaggregated Prefill/Decode
 
+![Disaggregated Prefill/Decode request flow](/images/pd-architecture.svg)
+
 This is the payoff. The core idea: prefill (processing the input prompt) is compute-bound and benefits from a strong GPU. Decode (generating output tokens one at a time) is memory-bandwidth-bound. By splitting them across specialized pods, you can optimize each independently.
 
 In my lab:
@@ -125,6 +127,38 @@ NIXL transfers raw bytes. It doesn't know or care about tensor shapes. So the tr
 The fix: force `--attention-backend FLASHINFER` on both pods. FlashInfer supports both sm_75 and sm_86 (via JIT on the T4), producing compatible KV cache layouts.
 
 This is the kind of issue that never appears in homogeneous cloud deployments where every GPU is the same model. Mixed GPU architectures surface it immediately.
+
+### Testing It
+
+A chat completion through the gateway:
+
+```bash
+GATEWAY_IP=$(kubectl get gateway inference-gateway -o jsonpath='{.status.addresses[0].value}')
+
+curl -s http://${GATEWAY_IP}/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "Qwen/Qwen2.5-7B-Instruct-AWQ",
+    "messages": [{"role": "user", "content": "Explain RDMA in one paragraph."}],
+    "max_tokens": 100
+  }' | python3 -m json.tool
+```
+
+Checking that the EPP is routing to the right roles:
+
+```bash
+kubectl logs -f deploy/vllm-pool-epp | grep -i "prefill\|decode"
+```
+
+And verifying the NIXL transfer is actually happening over RDMA:
+
+```bash
+kubectl logs deploy/vllm-decode -c vllm --tail=50 | grep "external prefix"
+```
+
+```
+INFO: External prefix cache hit rate: 100.0%
+```
 
 ### Results
 

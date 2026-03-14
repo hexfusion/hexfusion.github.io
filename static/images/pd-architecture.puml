@@ -1,0 +1,24 @@
+@startuml pd-architecture
+title Disaggregated Prefill/Decode — Request Flow
+
+participant Client #LightGreen
+participant "agentgateway\n(Envoy)" as GW #LightBlue
+participant "EPP\n(Endpoint Picker)" as EPP #LightBlue
+participant "vLLM Prefill\nT4 · dagobah" as P #Plum
+participant "vLLM Decode\nRTX 3060 · endor" as D #Gold
+
+Client -> GW: request
+GW -> EPP: ext-proc: pick pod
+EPP -> P: 1. prefill (process prompt)
+
+P -> P: build KV cache
+
+P -[#Red]> D: <b>RDMA / NIXL</b>\n25GbE ConnectX-4 · ~19.5ms
+note right: KV cache transfer\nGPU-to-GPU zero-copy
+
+EPP -> D: 2. decode (generate tokens)
+D -> D: FlashInfer attention\non transferred KV cache
+
+D --> Client: stream tokens · 96.8 tok/s peak
+
+@enduml

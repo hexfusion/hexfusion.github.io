@@ -2,17 +2,17 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>Posts on hexfusion - Sam Batschelet</title>
-    <link>https://hexfusion.io/posts/</link>
+    <link>http://localhost:1314/posts/</link>
     <description>Recent content in Posts on hexfusion - Sam Batschelet</description>
     <generator>Hugo</generator>
     <language>en-us</language>
     <lastBuildDate>Sat, 14 Mar 2026 00:00:00 +0000</lastBuildDate>
-    <atom:link href="https://hexfusion.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://localhost:1314/posts/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Disaggregated Prefill/Decode on Consumer GPUs</title>
-      <link>https://hexfusion.io/posts/disaggregated-pd-consumer-gpus/</link>
+      <link>http://localhost:1314/posts/disaggregated-pd-consumer-gpus/</link>
       <pubDate>Sat, 14 Mar 2026 00:00:00 +0000</pubDate>
-      <guid>https://hexfusion.io/posts/disaggregated-pd-consumer-gpus/</guid>
+      <guid>http://localhost:1314/posts/disaggregated-pd-consumer-gpus/</guid>
       <description>Running llm-d&amp;rsquo;s disaggregated prefill/decode architecture across an RTX 3060 and a Tesla T4 connected by 25GbE RDMA. What worked, what broke, and what I learned about KV cache transfer at the edge of what consumer hardware can do.</description>
     </item>
   </channel>

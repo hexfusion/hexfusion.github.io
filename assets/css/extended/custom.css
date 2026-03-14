@@ -1,0 +1,150 @@
+/* === Typography & Reading Comfort === */
+.post-content {
+    font-size: 1.05rem;
+    line-height: 1.85;
+    letter-spacing: 0.01em;
+}
+
+.post-content h2 {
+    margin-top: 2.5em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--border);
+}
+
+.post-content h3 {
+    margin-top: 1.8em;
+}
+
+/* Slightly larger paragraphs gap for breathing room */
+.post-content p {
+    margin-bottom: 1.4em;
+}
+
+/* === Links === */
+.post-content a {
+    color: var(--primary);
+    text-decoration: underline;
+    text-decoration-color: rgba(26, 136, 112, 0.5);
+    text-underline-offset: 3px;
+    text-decoration-thickness: 2px;
+    transition: text-decoration-color 0.2s;
+    box-shadow: none;
+}
+
+.post-content a:hover {
+    text-decoration-color: #1a8870;
+    box-shadow: none;
+}
+
+/* === Code Blocks === */
+.post-content pre {
+    border-radius: 8px;
+    margin: 1.5em 0;
+}
+
+.post-content pre code {
+    font-size: 0.85em;
+    line-height: 1.6;
+}
+
+/* Inline code — subtle tinted background */
+.post-content code {
+    background: rgba(26, 136, 112, 0.07);
+    border-radius: 4px;
+    font-size: 0.85em;
+    padding: 2px 6px;
+}
+
+[data-theme="dark"] .post-content code {
+    background: rgba(26, 136, 112, 0.15);
+}
+
+/* Don't double-style code inside pre blocks */
+.post-content pre code {
+    background: var(--code-block-bg) !important;
+    padding: 10px;
+}
+
+/* === Blockquotes === */
+.post-content blockquote {
+    border-inline-start: 3px solid #1a8870;
+    background: rgba(26, 136, 112, 0.04);
+    padding: 1em 1.2em;
+    border-radius: 0 6px 6px 0;
+    margin: 1.5em 0;
+}
+
+[data-theme="dark"] .post-content blockquote {
+    background: rgba(26, 136, 112, 0.08);
+}
+
+/* === Tags === */
+.post-tags a {
+    transition: background 0.2s, color 0.2s;
+}
+
+.post-tags a:hover {
+    background: #1a8870;
+    color: #fff;
+    border-color: #1a8870;
+}
+
+/* === Cover Image === */
+.post-content img {
+    border-radius: 8px;
+    margin: 1.5em 0;
+}
+
+.entry-cover img {
+    border-radius: 8px;
+}
+
+/* === Share Buttons === */
+.share-buttons {
+    margin-top: 1em;
+}
+
+.share-buttons a {
+    transition: transform 0.15s;
+}
+
+.share-buttons a:hover {
+    transform: scale(1.1);
+}
+
+/* === Table of Contents === */
+.toc {
+    border-color: rgba(26, 136, 112, 0.2);
+    border-radius: 8px;
+}
+
+/* === Horizontal Rules === */
+.post-content hr {
+    border: none;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--tertiary), transparent);
+    margin: 2.5em 0;
+}
+
+/* === Post List Cards — subtle hover lift === */
+.post-entry {
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.post-entry:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .post-entry:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* === Selection color === */
+::selection {
+    background: rgba(26, 136, 112, 0.2);
+}
+
+/* === Smooth scroll === */
+html {
+    scroll-behavior: smooth;
+}
