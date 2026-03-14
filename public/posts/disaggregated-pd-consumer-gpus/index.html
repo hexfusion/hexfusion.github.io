@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Disaggregated Prefill/Decode on Consumer GPUs | hexfusion</title>
+<meta name="keywords" content="llm-d, inference, rdma, vllm, gpu, bare-metal">
+<meta name="description" content="Running llm-d&rsquo;s disaggregated prefill/decode architecture across an RTX 3060 and a Tesla T4 connected by 25GbE RDMA. What worked, what broke, and what I learned about KV cache transfer at the edge of what consumer hardware can do.">
+<meta name="author" content="Sam Batschelet">
+<link rel="canonical" href="https://hexfusion.io/posts/disaggregated-pd-consumer-gpus/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.da3211e5ef867bf2b75fd5a6515cfed7195c011e8ab735694e203810a827097b.css" integrity="sha256-2jIR5e&#43;Ge/K3X9WmUVz&#43;1xlcAR6KtzVpTiA4EKgnCXs=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://hexfusion.io/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://hexfusion.io/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://hexfusion.io/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://hexfusion.io/apple-touch-icon.png">
+<link rel="mask-icon" href="https://hexfusion.io/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://hexfusion.io/posts/disaggregated-pd-consumer-gpus/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+        @media (prefers-color-scheme: light) {
+            .list::-webkit-scrollbar-thumb {
+                border-color: var(--code-bg);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://hexfusion.io/posts/disaggregated-pd-consumer-gpus/">
+  <meta property="og:site_name" content="hexfusion">
+  <meta property="og:title" content="Disaggregated Prefill/Decode on Consumer GPUs">
+  <meta property="og:description" content="Running llm-d’s disaggregated prefill/decode architecture across an RTX 3060 and a Tesla T4 connected by 25GbE RDMA. What worked, what broke, and what I learned about KV cache transfer at the edge of what consumer hardware can do.">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2026-03-14T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-03-14T00:00:00+00:00">
+    <meta property="article:tag" content="Llm-D">
+    <meta property="article:tag" content="Inference">
+    <meta property="article:tag" content="Rdma">
+    <meta property="article:tag" content="Vllm">
+    <meta property="article:tag" content="Gpu">
+    <meta property="article:tag" content="Bare-Metal">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Disaggregated Prefill/Decode on Consumer GPUs">
+  <meta name="twitter:description" content="Running llm-d’s disaggregated prefill/decode architecture across an RTX 3060 and a Tesla T4 connected by 25GbE RDMA. What worked, what broke, and what I learned about KV cache transfer at the edge of what consumer hardware can do.">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Posts",
+      "item": "https://hexfusion.io/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Disaggregated Prefill/Decode on Consumer GPUs",
+      "item": "https://hexfusion.io/posts/disaggregated-pd-consumer-gpus/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Disaggregated Prefill/Decode on Consumer GPUs",
+  "name": "Disaggregated Prefill\/Decode on Consumer GPUs",
+  "description": "Running llm-d\u0026rsquo;s disaggregated prefill/decode architecture across an RTX 3060 and a Tesla T4 connected by 25GbE RDMA. What worked, what broke, and what I learned about KV cache transfer at the edge of what consumer hardware can do.",
+  "keywords": [
+    "llm-d", "inference", "rdma", "vllm", "gpu", "bare-metal"
+  ],
+  "articleBody": "I’ve been building servers since my twenties. Back in the early 2000s, before cloud as we know it today was a thing, my first setup was a pair of old Intel 1U servers in my basement. Nothing special, just enough to build and host websites and learn how services actually worked. When you do things this way, you can’t help but learn all of the components.\nThat instinct, to understand systems by building them, is what led me to set up a bare-metal llm-d lab on hardware I could actually afford. Most of the llm-d ecosystem runs on H100 clusters in cloud data centers. My question was simple: how can you maximize inference using the hardware you already have?\nThe Goal Get a bare-minimum working example of llm-d’s disaggregated prefill/decode architecture with RDMA-based KV cache transfer between two physical nodes. Not a benchmark. Not a production deployment. Just proof that the full stack works end-to-end on hardware you can buy on eBay.\nChoosing the Hardware The NICs: ConnectX-4 Lx RDMA was the non-negotiable starting point. llm-d’s disaggregated architecture transfers KV cache between prefill and decode pods over the network, and RDMA is what makes that transfer fast enough to be worthwhile. Without RDMA, you’re shipping gigabytes of KV cache over TCP, and the network overhead eats any benefit from disaggregation.\nI went with Mellanox ConnectX-4 Lx (MCX4111A-ACAT), single-port 25GbE SFP28 cards. They’re the sweet spot for a home lab: cheap on the secondary market (~$30-40 each), well-supported by the inbox mlx5_core driver (no OFED install needed), and they do RoCE v2 out of the box. I connected them with a direct-attach copper (DAC) cable, no switch needed for two nodes.\nThe GPUs: What I Had and What I Could Justify RTX 3060 (12GB, Ampere) was already in my workstation. Consumer card, no NVLink, no MIG, but 12GB is enough for a quantized 7B model with room for KV cache.\nTesla T4 (16GB, Turing) was the datacenter GPU I wanted to explore. At current used pricing, it’s the most accessible way to get your hands on actual datacenter inference hardware. 16GB VRAM, 70W TDP, designed for inference workloads. I wanted to understand the difference between consumer and datacenter GPUs firsthand, not just read about it. One thing to know about running a T4 in a tower chassis: it’s a passively cooled card designed for server airflow. In a workstation without front-to-back forced air, it will throttle. I added extra case fans pointed directly at the card to keep it under thermal limits.\nThe T4 was a personal choice, not a requirement. Everything in this post could be done with two consumer GPUs. Any sm_75+ card with enough VRAM for your quantized model works fine. A used RTX 2080 Ti (~$200-300) would do the same job for the prefill role, and you wouldn’t need the extra cooling.\nGTX 1080 Ti (11GB, Pascal) was already in the second server. Immediately excluded from the cluster because AWQ quantization requires sm_75 or higher, and the 1080 Ti is sm_61. I disabled it at the PCI bus level so Kubernetes wouldn’t try to schedule on it.\nThe Servers Both are Supermicro dual-socket boards I’ve accumulated over the years:\nendor (decode): Supermicro H8DG6, dual AMD Opteron 6272 (32 cores), 92GB RAM, RTX 3060 dagobah (prefill): Supermicro X10DRG-OT+-CPU, dual Xeon E5-2699A v4 (88 threads), 220GB RAM, T4 Old enterprise hardware, but more than enough for this purpose. The CPUs and RAM are irrelevant for inference, the GPU is what matters. The extra RAM on dagobah is consumed by OpenShift VMs running on the same box.\nEven a “budget” lab isn’t cheap. A used T4 runs ~$700, two ConnectX-4 NICs and a DAC cable another ~$100, and the servers themselves were accumulated over years. Starting from nothing, you’re looking at $1000-1500. For pure compute, cloud spot instances are probably cheaper at this scale. The reason to own the hardware isn’t cost, it’s access. You can’t debug RDMA GID tables on a managed cloud instance. You can’t learn how RoCE works on GKE. The value is the operational experience you can’t get any other way. Simulators get you part of the way, but the real learning happens when things fail in ways no simulator models. Empty GID tables, missing kernel modules, attention backend mismatches that produce garbage instead of errors. Those lessons only happen on real hardware. And demand for this gear is strong, so you can sell it for close to what you paid when you’re done. Think of it as renting with no monthly fee.\nMaking RDMA Work The Easy Part Install the ConnectX-4 cards, connect with the DAC cable, assign IPs:\nendor: 10.0.0.1/24 on enp65s0np0 (mlx5_0) dagobah: 10.0.0.2/24 on ens1np0 (mlx5_0) Verify with ib_send_bw:\n#bytes #iterations BW peak[MB/sec] BW average[MB/sec] 65536 5000 2893.47 2893.14 23.14 Gbps, that’s 92.5% of the theoretical 25GbE line rate. Latency: 1.27 microseconds. The inbox kernel driver just works on Fedora. No OFED, no firmware flashing, no drama.\nThe Not-Easy Part Getting RDMA to work inside Kubernetes pods is where it got interesting.\nProblem 1: ib_umad. The RDMA device plugin (k8s-rdma-shared-dev-plugin) couldn’t discover devices because the ib_umad kernel module wasn’t loaded. No error message, just silent failure. Devices showed as 0 allocatable. Fix: modprobe ib_umad and persist via /etc/modules-load.d/.\nProblem 2: hostNetwork. The device plugin gives pods access to /dev/infiniband/ devices, but not the network routing needed to actually use them. The RDMA traffic needs to flow over the host’s physical NIC, not through a CNI virtual network. Fix: hostNetwork: true on both vLLM pods, plus dnsPolicy: ClusterFirstWithHostNet so DNS still works.\nProblem 3: GID table. The RDMA NIC on dagobah had no IP configured at boot. It would get assigned later by my scripts. But RoCE v2 needs an IP in the GID table to function. An empty GID table means the NIC falls back to RoCE v1, and when one side is v2 and the other is v1, the NIXL handshake fails silently. Fix: configure the IP persistently via NetworkManager so it’s there before any pods start.\nProblem 4: UCX device naming. NIXL uses UCX under the hood for RDMA transport. The environment variable UCX_NET_DEVICES needs the InfiniBand device name (mlx5_0:1), not the host network device name (ens1np0). Get it wrong and UCX falls back to TCP with no warning. Thankfully, UCX lists available devices in its error output when the specified device doesn’t exist.\nEvery one of these issues took a fair amount of time to debug. None of them are documented in the llm-d getting-started guides, because those guides assume you’re on a cloud provider where the RDMA infrastructure is pre-configured. But every one of these issues will hit any team deploying llm-d on bare metal or on-prem.\nBuilding the Kubernetes Layer k3s on both nodes. Lightweight, single-binary, gets out of the way. The control plane runs on endor, and dagobah joins as an agent.\nendor: k3s server (control plane + decode workloads) dagobah: k3s agent (prefill workloads) NVIDIA GPU Operator exposes the GPUs. The key setting: driver.enabled=false because both nodes already have the NVIDIA driver installed at the host level (akmod-nvidia on Fedora). The operator just needs to install the container toolkit, not the driver.\nOne gotcha that cost me an afternoon: the upstream vLLM container image (vllm/vllm-openai) ships CUDA 12.9. My driver is 580.x which provides CUDA 13.0. On datacenter GPUs, NVIDIA’s forward-compatibility libraries handle this mismatch. On consumer GPUs like the RTX 3060, they don’t. I had to build a custom image based on nvidia/cuda:13.0.1-devel-ubuntu24.04 with vLLM installed from PyPI.\nThe devel base (not runtime) matters too. FlashInfer needs nvcc for JIT compilation on the T4’s sm_75 architecture. Precompiled kernels only exist for sm_80+.\nThe Gateway Stack llm-d uses the Kubernetes Gateway API with an inference extension. The stack:\nClient -\u003e agentgateway (Envoy) -\u003e ext-proc -\u003e EPP (scheduler) -\u003e vLLM pod The EPP (Endpoint Picker) is the brain. It decides which pod should handle each request based on KV cache state, queue depth, and pod roles. For disaggregated P/D, it runs two scheduling passes: pick the decode pod first, then decide if a separate prefill pod is needed.\nI hit one naming evolution that caused confusion: kgateway was rebranded to agentgateway between releases. The kgateway v2.2.0 image I initially deployed had the inference extension disabled by default, with an env var (KGW_ENABLE_AGENTGATEWAY) that required CRDs from a domain (agentgateway.dev) that didn’t exist yet in that release. Switching to the agentgateway chart (v1.0.0-alpha.4) fixed everything.\nDisaggregated Prefill/Decode This is the payoff. The core idea: prefill (processing the input prompt) is compute-bound and benefits from a strong GPU. Decode (generating output tokens one at a time) is memory-bandwidth-bound. By splitting them across specialized pods, you can optimize each independently.\nIn my lab:\nT4 (dagobah) for prefill. 16GB VRAM, decent tensor core throughput for INT8. Processes the input prompt and builds the KV cache. RTX 3060 (endor) for decode. 12GB VRAM, 360 GB/s memory bandwidth. Generates output tokens using the transferred KV cache. The KV cache transfer happens over RDMA via NIXL (NVIDIA’s Inference Xfer Library). After the prefill pod processes the prompt, it tells the decode pod “here are the KV cache block IDs.” The decode pod’s routing sidecar triggers a NIXL transfer, moving GPU memory from dagobah to endor over the 25GbE RDMA link.\nThe Attention Backend Trap This one was subtle and took the longest to debug.\nThe T4 (sm_75) can’t run FlashAttention2, which requires sm_80+. The RTX 3060 (sm_86) picks FA2 by default. When each pod uses a different attention backend, they produce KV caches with different shapes, meaning different memory layouts for the key and value tensors.\nNIXL transfers raw bytes. It doesn’t know or care about tensor shapes. So the transfer succeeds, but the decode pod interprets the bytes with the wrong layout, and inference produces garbage.\nThe fix: force --attention-backend FLASHINFER on both pods. FlashInfer supports both sm_75 and sm_86 (via JIT on the T4), producing compatible KV cache layouts.\nThis is the kind of issue that never appears in homogeneous cloud deployments where every GPU is the same model. Mixed GPU architectures surface it immediately.\nResults Model: Qwen2.5-7B-Instruct-AWQ (awq_marlin, max-model-len=1024) Cache hit rate: 100% external prefix cache hit rate NIXL transfer: avg 19.5ms, 36% of small transfers \u003c5ms (RDMA zero-copy) Peak decode: 96.8 tokens/sec The numbers aren’t impressive by datacenter standards. That’s not the point. The point is that the full disaggregated P/D stack, agentgateway, EPP with PdProfileHandler, NIXL over RDMA, routing sidecar, and prefix cache scoring, all works end-to-end on two servers that cost less than a single H100.\nMaximizing Older Hardware Not everyone has access to H100s. Most people getting into this space, whether they’re junior engineers, hobbyists, or teams at companies that aren’t hyperscalers, are working with whatever GPUs they can get. That doesn’t mean they can’t participate.\nA few things that make older and consumer hardware viable for real inference work:\nQuantization is the great equalizer. AWQ at INT4 cuts a 7B model from 14GB to ~3.5GB. That’s the difference between “doesn’t fit” and “fits comfortably with room for KV cache.” The quality trade-off at INT4 is surprisingly small for most tasks. If you have an sm_75+ GPU with 8GB or more VRAM, you can serve a useful model.\nDisaggregation helps small GPUs more than big ones. An H100 with 80GB can hold a 70B model and a huge KV cache at the same time. An RTX 3060 with 12GB can barely fit a 7B model, leaving almost no room for KV cache. By offloading prefill to another node, the decode GPU doesn’t need to store both the model and the full prompt’s KV cache simultaneously. Disaggregation is more valuable at the margins.\nCPU memory is cheap, GPU memory isn’t. Both of my servers have 92GB and 220GB of RAM. vLLM supports CPU offloading for KV cache, spilling cache pages to system memory when the GPU fills up. It’s slower than GPU memory, but it extends your effective context length significantly. If you’re running on consumer hardware, this is the first knob to turn.\nThe best way to learn distributed systems is to build one. You don’t need expensive hardware to learn how RDMA works, how KV cache transfer affects latency, or how a scheduler makes routing decisions. A $30 NIC and a used datacenter GPU will teach you the same concepts that apply at H200 scale. The debugging skills transfer directly. The failure modes are the same, just at different throughput.\nWhy Build It Yourself I’ve found that the most effective open source contributions come from solving your own problems. When you use the software daily, you discover the sharp edges and missing pieces naturally. You don’t need to go looking for issues to file, they find you.\nThis lab exists because I wanted to understand llm-d from the inside out. Every RDMA gotcha I documented, every attention backend mismatch I debugged, every EPP configuration quirk I worked around, these are all potential upstream contributions. Not because I set out to contribute, but because I set out to make it work for me.\nIf you’re a younger developer looking to get into infrastructure or distributed systems: build something. Don’t wait for access to production hardware. Don’t wait for a team to give you a project. Get some old servers, install the software, break things, fix them, and write about what you learned. The knowledge you build this way is more durable than anything you’ll get from documentation alone.\nWhat I Learned RDMA on bare metal is the hard part. The inference stack (vLLM, EPP, gateway) is well-documented. The RDMA plumbing (device plugins, GID tables, UCX configuration, host networking) is not. Every bare-metal or on-prem deployment will hit these issues.\nMixed GPU architectures expose real bugs. The attention backend mismatch would never surface in a homogeneous cluster. If llm-d wants to support on-prem deployments where hardware isn’t uniform, this class of compatibility issue needs attention.\nConsumer GPUs work fine for learning. The RTX 3060 and T4 aren’t fast enough for production inference, but they’re fast enough to validate architecture, debug RDMA issues, and understand the full request flow. Every debugging technique I developed here applies directly to an H200 cluster.\nThe operational knowledge transfers. When I eventually get access to datacenter hardware, I won’t be figuring out RDMA for the first time. I’ll be tuning it.\nWhat’s Next Deploy the KV Cache Indexer to enable prefix-aware routing (currently the EPP uses simpler scoring without block-level cache tracking) Benchmark baseline (both pods running full P+D) vs disaggregated (split roles) Profile RDMA bandwidth utilization during cache transfer to see how close to the 25GbE line rate we actually get under real workloads Test with larger context lengths once H200 access is available Explore how to make this small model punch above its weight through fine-tuning and LoRA adapters The lab setup details, including manifests and quickstart guides, are in my lab notes. I plan to open-source the relevant bits once the setup stabilizes.\nI’m joining the llm-d team at Red Hat. These are my notes from the onboarding process.\n",
+  "wordCount" : "2510",
+  "inLanguage": "en",
+  "datePublished": "2026-03-14T00:00:00Z",
+  "dateModified": "2026-03-14T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Sam Batschelet"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://hexfusion.io/posts/disaggregated-pd-consumer-gpus/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "hexfusion",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://hexfusion.io/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://hexfusion.io/" accesskey="h" title="hexfusion (Alt + H)">hexfusion</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://hexfusion.io/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://hexfusion.io/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://hexfusion.io/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="https://hexfusion.io/">Home</a>&nbsp;»&nbsp;<a href="https://hexfusion.io/posts/">Posts</a></div>
+    <h1 class="post-title entry-hint-parent">
+      Disaggregated Prefill/Decode on Consumer GPUs
+      <span class="entry-hint" title="Draft">
+        <svg xmlns="http://www.w3.org/2000/svg" height="35" viewBox="0 -960 960 960" fill="currentColor">
+          <path
+            d="M160-410v-60h300v60H160Zm0-165v-60h470v60H160Zm0-165v-60h470v60H160Zm360 580v-123l221-220q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q9 9 13 20t4 22q0 11-4.5 22.5T862.09-380L643-160H520Zm300-263-37-37 37 37ZM580-220h38l121-122-18-19-19-18-122 121v38Zm141-141-19-18 37 37-18-19Z" />
+        </svg>
+      </span>
+    </h1>
+    <div class="post-meta"><span title='2026-03-14 00:00:00 +0000 UTC'>March 14, 2026</span>&nbsp;·&nbsp;<span>12 min</span>&nbsp;·&nbsp;<span>Sam Batschelet</span>
+
+</div>
+  </header> <div class="toc">
+    <details >
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">Table of Contents</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#the-goal" aria-label="The Goal">The Goal</a></li>
+                <li>
+                    <a href="#choosing-the-hardware" aria-label="Choosing the Hardware">Choosing the Hardware</a><ul>
+                        
+                <li>
+                    <a href="#the-nics-connectx-4-lx" aria-label="The NICs: ConnectX-4 Lx">The NICs: ConnectX-4 Lx</a></li>
+                <li>
+                    <a href="#the-gpus-what-i-had-and-what-i-could-justify" aria-label="The GPUs: What I Had and What I Could Justify">The GPUs: What I Had and What I Could Justify</a></li>
+                <li>
+                    <a href="#the-servers" aria-label="The Servers">The Servers</a></li></ul>
+                </li>
+                <li>
+                    <a href="#making-rdma-work" aria-label="Making RDMA Work">Making RDMA Work</a><ul>
+                        
+                <li>
+                    <a href="#the-easy-part" aria-label="The Easy Part">The Easy Part</a></li>
+                <li>
+                    <a href="#the-not-easy-part" aria-label="The Not-Easy Part">The Not-Easy Part</a></li></ul>
+                </li>
+                <li>
+                    <a href="#building-the-kubernetes-layer" aria-label="Building the Kubernetes Layer">Building the Kubernetes Layer</a></li>
+                <li>
+                    <a href="#the-gateway-stack" aria-label="The Gateway Stack">The Gateway Stack</a></li>
+                <li>
+                    <a href="#disaggregated-prefilldecode" aria-label="Disaggregated Prefill/Decode">Disaggregated Prefill/Decode</a><ul>
+                        
+                <li>
+                    <a href="#the-attention-backend-trap" aria-label="The Attention Backend Trap">The Attention Backend Trap</a></li>
+                <li>
+                    <a href="#results" aria-label="Results">Results</a></li></ul>
+                </li>
+                <li>
+                    <a href="#maximizing-older-hardware" aria-label="Maximizing Older Hardware">Maximizing Older Hardware</a></li>
+                <li>
+                    <a href="#why-build-it-yourself" aria-label="Why Build It Yourself">Why Build It Yourself</a></li>
+                <li>
+                    <a href="#what-i-learned" aria-label="What I Learned">What I Learned</a></li>
+                <li>
+                    <a href="#whats-next" aria-label="What&rsquo;s Next">What&rsquo;s Next</a>
+                </li>
+            </ul>
+        </div>
+    </details>
+</div>
+
+  <div class="post-content"><p>I&rsquo;ve been building servers since my twenties. Back in the early 2000s, before cloud as we know it today was a thing, my first setup was a pair of old Intel 1U servers in my basement. Nothing special, just enough to build and host websites and learn how services actually worked. When you do things this way, you can&rsquo;t help but learn all of the components.</p>
+<p>That instinct, to understand systems by <em>building</em> them, is what led me to set up a bare-metal llm-d lab on hardware I could actually afford. Most of the llm-d ecosystem runs on H100 clusters in cloud data centers. My question was simple: how can you maximize inference using the hardware you already have?</p>
+<h2 id="the-goal">The Goal<a hidden class="anchor" aria-hidden="true" href="#the-goal">#</a></h2>
+<p>Get a bare-minimum working example of llm-d&rsquo;s disaggregated prefill/decode architecture with RDMA-based KV cache transfer between two physical nodes. Not a benchmark. Not a production deployment. Just proof that the full stack works end-to-end on hardware you can buy on eBay.</p>
+<h2 id="choosing-the-hardware">Choosing the Hardware<a hidden class="anchor" aria-hidden="true" href="#choosing-the-hardware">#</a></h2>
+<h3 id="the-nics-connectx-4-lx">The NICs: ConnectX-4 Lx<a hidden class="anchor" aria-hidden="true" href="#the-nics-connectx-4-lx">#</a></h3>
+<p>RDMA was the non-negotiable starting point. llm-d&rsquo;s disaggregated architecture transfers KV cache between prefill and decode pods over the network, and RDMA is what makes that transfer fast enough to be worthwhile. Without RDMA, you&rsquo;re shipping gigabytes of KV cache over TCP, and the network overhead eats any benefit from disaggregation.</p>
+<p>I went with Mellanox ConnectX-4 Lx (MCX4111A-ACAT), single-port 25GbE SFP28 cards. They&rsquo;re the sweet spot for a home lab: cheap on the secondary market (~$30-40 each), well-supported by the inbox <code>mlx5_core</code> driver (no OFED install needed), and they do RoCE v2 out of the box. I connected them with a direct-attach copper (DAC) cable, no switch needed for two nodes.</p>
+<h3 id="the-gpus-what-i-had-and-what-i-could-justify">The GPUs: What I Had and What I Could Justify<a hidden class="anchor" aria-hidden="true" href="#the-gpus-what-i-had-and-what-i-could-justify">#</a></h3>
+<p><strong>RTX 3060 (12GB, Ampere)</strong> was already in my workstation. Consumer card, no NVLink, no MIG, but 12GB is enough for a quantized 7B model with room for KV cache.</p>
+<p><strong>Tesla T4 (16GB, Turing)</strong> was the datacenter GPU I wanted to explore. At current used pricing, it&rsquo;s the most accessible way to get your hands on actual datacenter inference hardware. 16GB VRAM, 70W TDP, designed for inference workloads. I wanted to understand the difference between consumer and datacenter GPUs firsthand, not just read about it. One thing to know about running a T4 in a tower chassis: it&rsquo;s a passively cooled card designed for server airflow. In a workstation without front-to-back forced air, it will throttle. I added extra case fans pointed directly at the card to keep it under thermal limits.</p>
+<p>The T4 was a personal choice, not a requirement. Everything in this post could be done with two consumer GPUs. Any sm_75+ card with enough VRAM for your quantized model works fine. A used RTX 2080 Ti (~$200-300) would do the same job for the prefill role, and you wouldn&rsquo;t need the extra cooling.</p>
+<p><strong>GTX 1080 Ti (11GB, Pascal)</strong> was already in the second server. Immediately excluded from the cluster because AWQ quantization requires sm_75 or higher, and the 1080 Ti is sm_61. I disabled it at the PCI bus level so Kubernetes wouldn&rsquo;t try to schedule on it.</p>
+<h3 id="the-servers">The Servers<a hidden class="anchor" aria-hidden="true" href="#the-servers">#</a></h3>
+<p>Both are Supermicro dual-socket boards I&rsquo;ve accumulated over the years:</p>
+<ul>
+<li><strong>endor</strong> (decode): Supermicro H8DG6, dual AMD Opteron 6272 (32 cores), 92GB RAM, RTX 3060</li>
+<li><strong>dagobah</strong> (prefill): Supermicro X10DRG-OT+-CPU, dual Xeon E5-2699A v4 (88 threads), 220GB RAM, T4</li>
+</ul>
+<p>Old enterprise hardware, but more than enough for this purpose. The CPUs and RAM are irrelevant for inference, the GPU is what matters. The extra RAM on dagobah is consumed by OpenShift VMs running on the same box.</p>
+<p>Even a &ldquo;budget&rdquo; lab isn&rsquo;t cheap. A used T4 runs ~$700, two ConnectX-4 NICs and a DAC cable another ~$100, and the servers themselves were accumulated over years. Starting from nothing, you&rsquo;re looking at $1000-1500. For pure compute, cloud spot instances are probably cheaper at this scale. The reason to own the hardware isn&rsquo;t cost, it&rsquo;s access. You can&rsquo;t debug RDMA GID tables on a managed cloud instance. You can&rsquo;t learn how RoCE works on GKE. The value is the operational experience you can&rsquo;t get any other way. Simulators get you part of the way, but the real learning happens when things fail in ways no simulator models. Empty GID tables, missing kernel modules, attention backend mismatches that produce garbage instead of errors. Those lessons only happen on real hardware. And demand for this gear is strong, so you can sell it for close to what you paid when you&rsquo;re done. Think of it as renting with no monthly fee.</p>
+<h2 id="making-rdma-work">Making RDMA Work<a hidden class="anchor" aria-hidden="true" href="#making-rdma-work">#</a></h2>
+<h3 id="the-easy-part">The Easy Part<a hidden class="anchor" aria-hidden="true" href="#the-easy-part">#</a></h3>
+<p>Install the ConnectX-4 cards, connect with the DAC cable, assign IPs:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>endor:    10.0.0.1/24 on enp65s0np0 (mlx5_0)
+</span></span><span style="display:flex;"><span>dagobah: 10.0.0.2/24 on ens1np0    (mlx5_0)
+</span></span></code></pre></div><p>Verify with <code>ib_send_bw</code>:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span> #bytes   #iterations   BW peak[MB/sec]   BW average[MB/sec]
+</span></span><span style="display:flex;"><span> 65536    5000          2893.47           2893.14
+</span></span></code></pre></div><p>23.14 Gbps, that&rsquo;s 92.5% of the theoretical 25GbE line rate. Latency: 1.27 microseconds. The inbox kernel driver just works on Fedora. No OFED, no firmware flashing, no drama.</p>
+<h3 id="the-not-easy-part">The Not-Easy Part<a hidden class="anchor" aria-hidden="true" href="#the-not-easy-part">#</a></h3>
+<p>Getting RDMA to work <em>inside Kubernetes pods</em> is where it got interesting.</p>
+<p><strong>Problem 1: ib_umad.</strong> The RDMA device plugin (<code>k8s-rdma-shared-dev-plugin</code>) couldn&rsquo;t discover devices because the <code>ib_umad</code> kernel module wasn&rsquo;t loaded. No error message, just silent failure. Devices showed as 0 allocatable. Fix: <code>modprobe ib_umad</code> and persist via <code>/etc/modules-load.d/</code>.</p>
+<p><strong>Problem 2: hostNetwork.</strong> The device plugin gives pods access to <code>/dev/infiniband/</code> devices, but not the network routing needed to actually <em>use</em> them. The RDMA traffic needs to flow over the host&rsquo;s physical NIC, not through a CNI virtual network. Fix: <code>hostNetwork: true</code> on both vLLM pods, plus <code>dnsPolicy: ClusterFirstWithHostNet</code> so DNS still works.</p>
+<p><strong>Problem 3: GID table.</strong> The RDMA NIC on dagobah had no IP configured at boot. It would get assigned later by my scripts. But RoCE v2 needs an IP in the GID table to function. An empty GID table means the NIC falls back to RoCE v1, and when one side is v2 and the other is v1, the NIXL handshake fails silently. Fix: configure the IP persistently via NetworkManager so it&rsquo;s there before any pods start.</p>
+<p><strong>Problem 4: UCX device naming.</strong> NIXL uses UCX under the hood for RDMA transport. The environment variable <code>UCX_NET_DEVICES</code> needs the <em>InfiniBand</em> device name (<code>mlx5_0:1</code>), not the host network device name (<code>ens1np0</code>). Get it wrong and UCX falls back to TCP with no warning. Thankfully, UCX lists available devices in its error output when the specified device doesn&rsquo;t exist.</p>
+<p>Every one of these issues took a fair amount of time to debug. None of them are documented in the llm-d getting-started guides, because those guides assume you&rsquo;re on a cloud provider where the RDMA infrastructure is pre-configured. But every one of these issues will hit any team deploying llm-d on bare metal or on-prem.</p>
+<h2 id="building-the-kubernetes-layer">Building the Kubernetes Layer<a hidden class="anchor" aria-hidden="true" href="#building-the-kubernetes-layer">#</a></h2>
+<p>k3s on both nodes. Lightweight, single-binary, gets out of the way. The control plane runs on endor, and dagobah joins as an agent.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-gdscript3" data-lang="gdscript3"><span style="display:flex;"><span>endor:    k3s server (control plane <span style="color:#f92672">+</span> decode workloads)
+</span></span><span style="display:flex;"><span>dagobah: k3s agent (prefill workloads)
+</span></span></code></pre></div><p>NVIDIA GPU Operator exposes the GPUs. The key setting: <code>driver.enabled=false</code> because both nodes already have the NVIDIA driver installed at the host level (akmod-nvidia on Fedora). The operator just needs to install the container toolkit, not the driver.</p>
+<p>One gotcha that cost me an afternoon: the upstream vLLM container image (<code>vllm/vllm-openai</code>) ships CUDA 12.9. My driver is 580.x which provides CUDA 13.0. On datacenter GPUs, NVIDIA&rsquo;s forward-compatibility libraries handle this mismatch. On consumer GPUs like the RTX 3060, they don&rsquo;t. I had to build a custom image based on <code>nvidia/cuda:13.0.1-devel-ubuntu24.04</code> with vLLM installed from PyPI.</p>
+<p>The <code>devel</code> base (not <code>runtime</code>) matters too. FlashInfer needs <code>nvcc</code> for JIT compilation on the T4&rsquo;s sm_75 architecture. Precompiled kernels only exist for sm_80+.</p>
+<h2 id="the-gateway-stack">The Gateway Stack<a hidden class="anchor" aria-hidden="true" href="#the-gateway-stack">#</a></h2>
+<p>llm-d uses the Kubernetes Gateway API with an inference extension. The stack:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>Client -&gt; agentgateway (Envoy) -&gt; ext-proc -&gt; EPP (scheduler) -&gt; vLLM pod
+</span></span></code></pre></div><p>The EPP (Endpoint Picker) is the brain. It decides which pod should handle each request based on KV cache state, queue depth, and pod roles. For disaggregated P/D, it runs two scheduling passes: pick the decode pod first, then decide if a separate prefill pod is needed.</p>
+<p>I hit one naming evolution that caused confusion: <code>kgateway</code> was rebranded to <code>agentgateway</code> between releases. The kgateway v2.2.0 image I initially deployed had the inference extension disabled by default, with an env var (<code>KGW_ENABLE_AGENTGATEWAY</code>) that required CRDs from a domain (<code>agentgateway.dev</code>) that didn&rsquo;t exist yet in that release. Switching to the agentgateway chart (v1.0.0-alpha.4) fixed everything.</p>
+<h2 id="disaggregated-prefilldecode">Disaggregated Prefill/Decode<a hidden class="anchor" aria-hidden="true" href="#disaggregated-prefilldecode">#</a></h2>
+<p>This is the payoff. The core idea: prefill (processing the input prompt) is compute-bound and benefits from a strong GPU. Decode (generating output tokens one at a time) is memory-bandwidth-bound. By splitting them across specialized pods, you can optimize each independently.</p>
+<p>In my lab:</p>
+<ul>
+<li><strong>T4 (dagobah) for prefill.</strong> 16GB VRAM, decent tensor core throughput for INT8. Processes the input prompt and builds the KV cache.</li>
+<li><strong>RTX 3060 (endor) for decode.</strong> 12GB VRAM, 360 GB/s memory bandwidth. Generates output tokens using the transferred KV cache.</li>
+</ul>
+<p>The KV cache transfer happens over RDMA via NIXL (NVIDIA&rsquo;s Inference Xfer Library). After the prefill pod processes the prompt, it tells the decode pod &ldquo;here are the KV cache block IDs.&rdquo; The decode pod&rsquo;s routing sidecar triggers a NIXL transfer, moving GPU memory from dagobah to endor over the 25GbE RDMA link.</p>
+<h3 id="the-attention-backend-trap">The Attention Backend Trap<a hidden class="anchor" aria-hidden="true" href="#the-attention-backend-trap">#</a></h3>
+<p>This one was subtle and took the longest to debug.</p>
+<p>The T4 (sm_75) can&rsquo;t run FlashAttention2, which requires sm_80+. The RTX 3060 (sm_86) picks FA2 by default. When each pod uses a different attention backend, they produce KV caches with <em>different shapes</em>, meaning different memory layouts for the key and value tensors.</p>
+<p>NIXL transfers raw bytes. It doesn&rsquo;t know or care about tensor shapes. So the transfer succeeds, but the decode pod interprets the bytes with the wrong layout, and inference produces garbage.</p>
+<p>The fix: force <code>--attention-backend FLASHINFER</code> on both pods. FlashInfer supports both sm_75 and sm_86 (via JIT on the T4), producing compatible KV cache layouts.</p>
+<p>This is the kind of issue that never appears in homogeneous cloud deployments where every GPU is the same model. Mixed GPU architectures surface it immediately.</p>
+<h3 id="results">Results<a hidden class="anchor" aria-hidden="true" href="#results">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>Model:          Qwen2.5-7B-Instruct-AWQ (awq_marlin, max-model-len=1024)
+</span></span><span style="display:flex;"><span>Cache hit rate: 100% external prefix cache hit rate
+</span></span><span style="display:flex;"><span>NIXL transfer:  avg 19.5ms, 36% of small transfers &lt;5ms (RDMA zero-copy)
+</span></span><span style="display:flex;"><span>Peak decode:    96.8 tokens/sec
+</span></span></code></pre></div><p>The numbers aren&rsquo;t impressive by datacenter standards. That&rsquo;s not the point. The point is that the full disaggregated P/D stack, agentgateway, EPP with PdProfileHandler, NIXL over RDMA, routing sidecar, and prefix cache scoring, all works end-to-end on two servers that cost less than a single H100.</p>
+<h2 id="maximizing-older-hardware">Maximizing Older Hardware<a hidden class="anchor" aria-hidden="true" href="#maximizing-older-hardware">#</a></h2>
+<p>Not everyone has access to H100s. Most people getting into this space, whether they&rsquo;re junior engineers, hobbyists, or teams at companies that aren&rsquo;t hyperscalers, are working with whatever GPUs they can get. That doesn&rsquo;t mean they can&rsquo;t participate.</p>
+<p>A few things that make older and consumer hardware viable for real inference work:</p>
+<p><strong>Quantization is the great equalizer.</strong> AWQ at INT4 cuts a 7B model from 14GB to ~3.5GB. That&rsquo;s the difference between &ldquo;doesn&rsquo;t fit&rdquo; and &ldquo;fits comfortably with room for KV cache.&rdquo; The quality trade-off at INT4 is surprisingly small for most tasks. If you have an sm_75+ GPU with 8GB or more VRAM, you can serve a useful model.</p>
+<p><strong>Disaggregation helps small GPUs more than big ones.</strong> An H100 with 80GB can hold a 70B model and a huge KV cache at the same time. An RTX 3060 with 12GB can barely fit a 7B model, leaving almost no room for KV cache. By offloading prefill to another node, the decode GPU doesn&rsquo;t need to store both the model and the full prompt&rsquo;s KV cache simultaneously. Disaggregation is more valuable at the margins.</p>
+<p><strong>CPU memory is cheap, GPU memory isn&rsquo;t.</strong> Both of my servers have 92GB and 220GB of RAM. vLLM supports CPU offloading for KV cache, spilling cache pages to system memory when the GPU fills up. It&rsquo;s slower than GPU memory, but it extends your effective context length significantly. If you&rsquo;re running on consumer hardware, this is the first knob to turn.</p>
+<p><strong>The best way to learn distributed systems is to build one.</strong> You don&rsquo;t need expensive hardware to learn how RDMA works, how KV cache transfer affects latency, or how a scheduler makes routing decisions. A $30 NIC and a used datacenter GPU will teach you the same concepts that apply at H200 scale. The debugging skills transfer directly. The failure modes are the same, just at different throughput.</p>
+<h2 id="why-build-it-yourself">Why Build It Yourself<a hidden class="anchor" aria-hidden="true" href="#why-build-it-yourself">#</a></h2>
+<p>I&rsquo;ve found that the most effective open source contributions come from solving your own problems. When you use the software daily, you discover the sharp edges and missing pieces naturally. You don&rsquo;t need to go looking for issues to file, they find you.</p>
+<p>This lab exists because I wanted to understand llm-d from the inside out. Every RDMA gotcha I documented, every attention backend mismatch I debugged, every EPP configuration quirk I worked around, these are all potential upstream contributions. Not because I set out to contribute, but because I set out to make it work for <em>me</em>.</p>
+<p>If you&rsquo;re a younger developer looking to get into infrastructure or distributed systems: build something. Don&rsquo;t wait for access to production hardware. Don&rsquo;t wait for a team to give you a project. Get some old servers, install the software, break things, fix them, and write about what you learned. The knowledge you build this way is more durable than anything you&rsquo;ll get from documentation alone.</p>
+<h2 id="what-i-learned">What I Learned<a hidden class="anchor" aria-hidden="true" href="#what-i-learned">#</a></h2>
+<p><strong>RDMA on bare metal is the hard part.</strong> The inference stack (vLLM, EPP, gateway) is well-documented. The RDMA plumbing (device plugins, GID tables, UCX configuration, host networking) is not. Every bare-metal or on-prem deployment will hit these issues.</p>
+<p><strong>Mixed GPU architectures expose real bugs.</strong> The attention backend mismatch would never surface in a homogeneous cluster. If llm-d wants to support on-prem deployments where hardware isn&rsquo;t uniform, this class of compatibility issue needs attention.</p>
+<p><strong>Consumer GPUs work fine for learning.</strong> The RTX 3060 and T4 aren&rsquo;t fast enough for production inference, but they&rsquo;re fast enough to validate architecture, debug RDMA issues, and understand the full request flow. Every debugging technique I developed here applies directly to an H200 cluster.</p>
+<p><strong>The operational knowledge transfers.</strong> When I eventually get access to datacenter hardware, I won&rsquo;t be figuring out RDMA for the first time. I&rsquo;ll be tuning it.</p>
+<h2 id="whats-next">What&rsquo;s Next<a hidden class="anchor" aria-hidden="true" href="#whats-next">#</a></h2>
+<ul>
+<li>Deploy the KV Cache Indexer to enable prefix-aware routing (currently the EPP uses simpler scoring without block-level cache tracking)</li>
+<li>Benchmark baseline (both pods running full P+D) vs disaggregated (split roles)</li>
+<li>Profile RDMA bandwidth utilization during cache transfer to see how close to the 25GbE line rate we actually get under real workloads</li>
+<li>Test with larger context lengths once H200 access is available</li>
+<li>Explore how to make this small model punch above its weight through fine-tuning and LoRA adapters</li>
+</ul>
+<hr>
+<p><em>The lab setup details, including manifests and quickstart guides, are in my <a href="https://github.com/hexfusion/design/tree/main/work/llm-d/lab">lab notes</a>. I plan to open-source the relevant bits once the setup stabilizes.</em></p>
+<p><em>I&rsquo;m joining the <a href="https://github.com/llm-d">llm-d</a> team at Red Hat. These are my notes from the onboarding process.</em></p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://hexfusion.io/tags/llm-d/">Llm-D</a></li>
+      <li><a href="https://hexfusion.io/tags/inference/">Inference</a></li>
+      <li><a href="https://hexfusion.io/tags/rdma/">Rdma</a></li>
+      <li><a href="https://hexfusion.io/tags/vllm/">Vllm</a></li>
+      <li><a href="https://hexfusion.io/tags/gpu/">Gpu</a></li>
+      <li><a href="https://hexfusion.io/tags/bare-metal/">Bare-Metal</a></li>
+    </ul>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://hexfusion.io/">hexfusion</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = 'copy';
+
+        function copyingDone() {
+            copybutton.innerHTML = 'copied!';
+            setTimeout(() => {
+                copybutton.innerHTML = 'copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>

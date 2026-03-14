@@ -1,0 +1,51 @@
+baseURL = 'https://hexfusion.io/'
+languageCode = 'en-us'
+title = 'hexfusion'
+theme = 'PaperMod'
+[pagination]
+  pagerSize = 10
+
+[params]
+  env = 'production'
+  description = 'Distributed systems, LLM inference, edge and Kubernetes from the infrastructure side.'
+  author = 'Sam Batschelet'
+  ShowReadingTime = true
+  ShowPostNavLinks = true
+  ShowBreadCrumbs = true
+  ShowCodeCopyButtons = true
+  ShowToc = true
+  defaultTheme = 'auto'
+
+  [params.homeInfoParams]
+    Title = 'hexfusion'
+    Content = 'Distributed systems engineer writing about LLM inference infrastructure, Kubernetes, and building things at the edge.'
+
+  [[params.socialIcons]]
+    name = 'github'
+    url = 'https://github.com/hexfusion'
+
+[menu]
+  [[menu.main]]
+    identifier = 'posts'
+    name = 'Posts'
+    url = '/posts/'
+    weight = 10
+  [[menu.main]]
+    identifier = 'about'
+    name = 'About'
+    url = '/about/'
+    weight = 20
+  [[menu.main]]
+    identifier = 'tags'
+    name = 'Tags'
+    url = '/tags/'
+    weight = 30
+
+[markup]
+  [markup.highlight]
+    style = 'monokai'
+    lineNos = false
+    guessSyntax = true
+
+[outputs]
+  home = ['HTML', 'RSS', 'JSON']

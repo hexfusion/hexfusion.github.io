@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Tags on hexfusion</title>
+    <link>https://hexfusion.io/tags/</link>
+    <description>Recent content in Tags on hexfusion</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 14 Mar 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://hexfusion.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Bare-Metal</title>
+      <link>https://hexfusion.io/tags/bare-metal/</link>
+      <pubDate>Sat, 14 Mar 2026 00:00:00 +0000</pubDate>
+      <guid>https://hexfusion.io/tags/bare-metal/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Gpu</title>
+      <link>https://hexfusion.io/tags/gpu/</link>
+      <pubDate>Sat, 14 Mar 2026 00:00:00 +0000</pubDate>
+      <guid>https://hexfusion.io/tags/gpu/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Inference</title>
+      <link>https://hexfusion.io/tags/inference/</link>
+      <pubDate>Sat, 14 Mar 2026 00:00:00 +0000</pubDate>
+      <guid>https://hexfusion.io/tags/inference/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Llm-D</title>
+      <link>https://hexfusion.io/tags/llm-d/</link>
+      <pubDate>Sat, 14 Mar 2026 00:00:00 +0000</pubDate>
+      <guid>https://hexfusion.io/tags/llm-d/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Rdma</title>
+      <link>https://hexfusion.io/tags/rdma/</link>
+      <pubDate>Sat, 14 Mar 2026 00:00:00 +0000</pubDate>
+      <guid>https://hexfusion.io/tags/rdma/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Vllm</title>
+      <link>https://hexfusion.io/tags/vllm/</link>
+      <pubDate>Sat, 14 Mar 2026 00:00:00 +0000</pubDate>
+      <guid>https://hexfusion.io/tags/vllm/</guid>
+      <description></description>
+    </item>
+  </channel>
+</rss>
