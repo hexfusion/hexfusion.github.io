@@ -19,11 +19,11 @@ theme = 'PaperMod'
   defaultTheme = 'auto'
 
   [params.homeInfoParams]
-    Title = "Hey, I'm Sam Batschelet"
+    Title = "Sam Batschelet"
     Content = """
-Distributed systems engineer at Red Hat, working on [llm-d](https://github.com/llm-d), open source Kubernetes-native distributed LLM inference.
+Distributed systems engineer at Red Hat, building [llm-d](https://github.com/llm-d). Previously etcd, OpenShift, Flight Control.
 
-Writing about AI infrastructure from the systems side, maximizing inference on the hardware you have, and learning in public.
+Writing about LLM inference, RDMA, and Kubernetes from the systems side.
 """
 
   [params.fuseOpts]

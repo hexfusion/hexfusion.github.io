@@ -22,26 +22,22 @@ RDMA was the non-negotiable starting point. llm-d's disaggregated architecture t
 
 I went with Mellanox ConnectX-4 Lx (MCX4111A-ACAT), single-port 25GbE SFP28 cards. They're the sweet spot for a home lab: cheap on the secondary market (~$30-40 each), well-supported by the inbox `mlx5_core` driver (no OFED install needed), and they do RoCE v2 out of the box. I connected them with a direct-attach copper (DAC) cable, no switch needed for two nodes.
 
-### The GPUs: What I Had and What I Could Justify
+### The GPUs
 
-**RTX 3060 (12GB, Ampere)** was already in my workstation. Consumer card, no NVLink, no MIG, but 12GB is enough for a quantized 7B model with room for KV cache.
+**RTX 3060 (12GB, Ampere)** was already in my workstation. 12GB is enough for a quantized 7B model with room for KV cache.
 
-**Tesla T4 (16GB, Turing)** was the datacenter GPU I wanted to explore. At current used pricing, it's the most accessible way to get your hands on actual datacenter inference hardware. 16GB VRAM, 70W TDP, designed for inference workloads. I wanted to understand the difference between consumer and datacenter GPUs firsthand, not just read about it. One thing to know about running a T4 in a tower chassis: it's a passively cooled card designed for server airflow. In a workstation without front-to-back forced air, it will throttle. I added extra case fans pointed directly at the card to keep it under thermal limits.
+**Tesla T4 (16GB, Turing)** is the most accessible used datacenter inference GPU. 16GB VRAM, 70W TDP. Note: it's passively cooled, so in a tower chassis you'll need extra fans pointed at it or it will throttle.
 
-The T4 was a personal choice, not a requirement. Everything in this post could be done with two consumer GPUs. Any sm_75+ card with enough VRAM for your quantized model works fine. A used RTX 2080 Ti (~$200-300) would do the same job for the prefill role, and you wouldn't need the extra cooling.
-
-**GTX 1080 Ti (11GB, Pascal)** was already in the second server. Immediately excluded from the cluster because AWQ quantization requires sm_75 or higher, and the 1080 Ti is sm_61. I disabled it at the PCI bus level so Kubernetes wouldn't try to schedule on it.
+Any sm_75+ card with enough VRAM works. A used RTX 2080 Ti would do the same job.
 
 ### The Servers
 
-Both are Supermicro dual-socket boards I've accumulated over the years:
+Both are Supermicro dual-socket boards accumulated over years:
 
-- **endor** (decode): Supermicro H8DG6, dual AMD Opteron 6272 (32 cores), 92GB RAM, RTX 3060
-- **dagobah** (prefill): Supermicro X10DRG-OT+-CPU, dual Xeon E5-2699A v4 (88 threads), 220GB RAM, T4
+- **endor** (decode): dual AMD Opteron 6272, 92GB RAM, RTX 3060
+- **dagobah** (prefill): dual Xeon E5-2699A v4, 220GB RAM, T4
 
-Old enterprise hardware, but more than enough for this purpose. The CPUs and RAM are irrelevant for inference, the GPU is what matters. The extra RAM on dagobah is consumed by OpenShift VMs running on the same box.
-
-Even a "budget" lab isn't cheap. A used T4 runs ~$700, two ConnectX-4 NICs and a DAC cable another ~$100, and the servers themselves were accumulated over years. Starting from nothing, you're looking at $1000-1500. For pure compute, cloud spot instances are probably cheaper at this scale. The reason to own the hardware isn't cost, it's access. You can't debug RDMA GID tables on a managed cloud instance. You can't learn how RoCE works on GKE. The value is the operational experience you can't get any other way. Simulators get you part of the way, but the real learning happens when things fail in ways no simulator models. Empty GID tables, missing kernel modules, attention backend mismatches that produce garbage instead of errors. Those lessons only happen on real hardware. And demand for this gear is strong, so you can sell it for close to what you paid when you're done. Think of it as renting with no monthly fee.
+The CPUs and RAM are irrelevant for inference. The GPU is what matters. Starting from nothing, budget ~$1000-1500 for the GPUs, NICs, and a DAC cable. The reason to own the hardware isn't cost, it's access. You can't debug RDMA GID tables on a managed cloud instance. The real learning happens when things fail in ways no simulator models.
 
 ## Making RDMA Work
 
@@ -173,35 +169,25 @@ The numbers aren't impressive by datacenter standards. That's not the point. The
 
 ## Maximizing Older Hardware
 
-Not everyone has access to H100s. Most people getting into this space, whether they're junior engineers, hobbyists, or teams at companies that aren't hyperscalers, are working with whatever GPUs they can get. That doesn't mean they can't participate.
+**Quantization is the great equalizer.** AWQ at INT4 cuts a 7B model from 14GB to ~3.5GB. Any sm_75+ GPU with 8GB+ VRAM can serve a useful model.
 
-A few things that make older and consumer hardware viable for real inference work:
+**Disaggregation helps small GPUs more than big ones.** An H100 has 80GB for model + KV cache. An RTX 3060 has 12GB,barely enough for the model alone. By offloading prefill, the decode GPU doesn't need to hold the full prompt's KV cache. Disaggregation is more valuable at the margins.
 
-**Quantization is the great equalizer.** AWQ at INT4 cuts a 7B model from 14GB to ~3.5GB. That's the difference between "doesn't fit" and "fits comfortably with room for KV cache." The quality trade-off at INT4 is surprisingly small for most tasks. If you have an sm_75+ GPU with 8GB or more VRAM, you can serve a useful model.
+**CPU memory is cheap, GPU memory isn't.** vLLM supports CPU offloading for KV cache. Slower, but it extends your effective context length significantly. First knob to turn on consumer hardware.
 
-**Disaggregation helps small GPUs more than big ones.** An H100 with 80GB can hold a 70B model and a huge KV cache at the same time. An RTX 3060 with 12GB can barely fit a 7B model, leaving almost no room for KV cache. By offloading prefill to another node, the decode GPU doesn't need to store both the model and the full prompt's KV cache simultaneously. Disaggregation is more valuable at the margins.
-
-**CPU memory is cheap, GPU memory isn't.** Both of my servers have 92GB and 220GB of RAM. vLLM supports CPU offloading for KV cache, spilling cache pages to system memory when the GPU fills up. It's slower than GPU memory, but it extends your effective context length significantly. If you're running on consumer hardware, this is the first knob to turn.
-
-**The best way to learn distributed systems is to build one.** You don't need expensive hardware to learn how RDMA works, how KV cache transfer affects latency, or how a scheduler makes routing decisions. A $30 NIC and a used datacenter GPU will teach you the same concepts that apply at H200 scale. The debugging skills transfer directly. The failure modes are the same, just at different throughput.
+**The debugging skills transfer directly.** A $30 NIC and a used datacenter GPU teach you the same concepts that apply at H200 scale. The failure modes are the same, just at different throughput.
 
 ## Why Build It Yourself
 
-I've found that the most effective open source contributions come from solving your own problems. When you use the software daily, you discover the sharp edges and missing pieces naturally. You don't need to go looking for issues to file, they find you.
+This lab exists because I wanted to understand llm-d from the inside out. Seeing RDMA handshake failures, attention backend mismatches, and silent TCP fallbacks in person is how you build real opinions and find real problems to solve.
 
-This lab exists because I wanted to understand llm-d from the inside out. Every RDMA gotcha I documented, every attention backend mismatch I debugged, every EPP configuration quirk I worked around, these are all potential upstream contributions. Not because I set out to contribute, but because I set out to make it work for *me*.
+If you're getting into infrastructure or distributed systems: build something. Get some old servers, break things, fix them, and write about what you learned.
 
-If you're a younger developer looking to get into infrastructure or distributed systems: build something. Don't wait for access to production hardware. Don't wait for a team to give you a project. Get some old servers, install the software, break things, fix them, and write about what you learned. The knowledge you build this way is more durable than anything you'll get from documentation alone.
+## Takeaways
 
-## What I Learned
+The hard problems weren't inference. vLLM, EPP, and the gateway stack worked as documented. The hard problems were all RDMA: empty GID tables, silent protocol fallbacks, device naming that differs between kernel and userspace. None of this is covered in any getting-started guide because those guides assume cloud infrastructure.
 
-**RDMA on bare metal is the hard part.** The inference stack (vLLM, EPP, gateway) is well-documented. The RDMA plumbing (device plugins, GID tables, UCX configuration, host networking) is not. Every bare-metal or on-prem deployment will hit these issues.
-
-**Mixed GPU architectures expose real bugs.** The attention backend mismatch would never surface in a homogeneous cluster. If llm-d wants to support on-prem deployments where hardware isn't uniform, this class of compatibility issue needs attention.
-
-**Consumer GPUs work fine for learning.** The RTX 3060 and T4 aren't fast enough for production inference, but they're fast enough to validate architecture, debug RDMA issues, and understand the full request flow. Every debugging technique I developed here applies directly to an H200 cluster.
-
-**The operational knowledge transfers.** When I eventually get access to datacenter hardware, I won't be figuring out RDMA for the first time. I'll be tuning it.
+Mixed GPU architectures made it worse and better at the same time. Worse because mismatched attention backends produce garbage with no error. Better because it forced me to actually understand KV cache layouts instead of just trusting defaults.
 
 ## What's Next
 

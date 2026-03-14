@@ -2,38 +2,38 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>http://localhost:1314/tags/bare-metal/</loc>
+    <loc>http://localhost:37239/tags/bare-metal/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1314/posts/disaggregated-pd-consumer-gpus/</loc>
+    <loc>http://localhost:37239/posts/disaggregated-pd-consumer-gpus/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1314/tags/gpu/</loc>
+    <loc>http://localhost:37239/tags/gpu/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1314/</loc>
+    <loc>http://localhost:37239/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1314/tags/inference/</loc>
+    <loc>http://localhost:37239/tags/inference/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1314/tags/llm-d/</loc>
+    <loc>http://localhost:37239/tags/llm-d/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1314/posts/</loc>
+    <loc>http://localhost:37239/posts/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1314/tags/rdma/</loc>
+    <loc>http://localhost:37239/tags/rdma/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1314/tags/</loc>
+    <loc>http://localhost:37239/tags/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1314/tags/vllm/</loc>
+    <loc>http://localhost:37239/tags/vllm/</loc>
     <lastmod>2026-03-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1314/about/</loc>
+    <loc>http://localhost:37239/about/</loc>
   </url><url>
-    <loc>http://localhost:1314/categories/</loc>
+    <loc>http://localhost:37239/categories/</loc>
   </url>
 </urlset>
