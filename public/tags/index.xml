@@ -2,52 +2,52 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>Tags on hexfusion - Sam Batschelet</title>
-    <link>http://localhost:37239/tags/</link>
+    <link>http://localhost:43833/tags/</link>
     <description>Recent content in Tags on hexfusion - Sam Batschelet</description>
     <generator>Hugo</generator>
     <language>en-us</language>
     <lastBuildDate>Sat, 14 Mar 2026 00:00:00 +0000</lastBuildDate>
-    <atom:link href="http://localhost:37239/tags/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://localhost:43833/tags/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Bare-Metal</title>
-      <link>http://localhost:37239/tags/bare-metal/</link>
+      <link>http://localhost:43833/tags/bare-metal/</link>
       <pubDate>Sat, 14 Mar 2026 00:00:00 +0000</pubDate>
-      <guid>http://localhost:37239/tags/bare-metal/</guid>
+      <guid>http://localhost:43833/tags/bare-metal/</guid>
       <description></description>
     </item>
     <item>
       <title>Gpu</title>
-      <link>http://localhost:37239/tags/gpu/</link>
+      <link>http://localhost:43833/tags/gpu/</link>
       <pubDate>Sat, 14 Mar 2026 00:00:00 +0000</pubDate>
-      <guid>http://localhost:37239/tags/gpu/</guid>
+      <guid>http://localhost:43833/tags/gpu/</guid>
       <description></description>
     </item>
     <item>
       <title>Inference</title>
-      <link>http://localhost:37239/tags/inference/</link>
+      <link>http://localhost:43833/tags/inference/</link>
       <pubDate>Sat, 14 Mar 2026 00:00:00 +0000</pubDate>
-      <guid>http://localhost:37239/tags/inference/</guid>
+      <guid>http://localhost:43833/tags/inference/</guid>
       <description></description>
     </item>
     <item>
       <title>Llm-D</title>
-      <link>http://localhost:37239/tags/llm-d/</link>
+      <link>http://localhost:43833/tags/llm-d/</link>
       <pubDate>Sat, 14 Mar 2026 00:00:00 +0000</pubDate>
-      <guid>http://localhost:37239/tags/llm-d/</guid>
+      <guid>http://localhost:43833/tags/llm-d/</guid>
       <description></description>
     </item>
     <item>
       <title>Rdma</title>
-      <link>http://localhost:37239/tags/rdma/</link>
+      <link>http://localhost:43833/tags/rdma/</link>
       <pubDate>Sat, 14 Mar 2026 00:00:00 +0000</pubDate>
-      <guid>http://localhost:37239/tags/rdma/</guid>
+      <guid>http://localhost:43833/tags/rdma/</guid>
       <description></description>
     </item>
     <item>
       <title>Vllm</title>
-      <link>http://localhost:37239/tags/vllm/</link>
+      <link>http://localhost:43833/tags/vllm/</link>
       <pubDate>Sat, 14 Mar 2026 00:00:00 +0000</pubDate>
-      <guid>http://localhost:37239/tags/vllm/</guid>
+      <guid>http://localhost:43833/tags/vllm/</guid>
       <description></description>
     </item>
   </channel>
