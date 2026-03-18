@@ -1,0 +1,129 @@
+@startuml dranet-architecture
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 11
+skinparam shadowing false
+skinparam roundcorner 8
+
+title DRANet Architecture — RDMA Device Assignment for Kubernetes
+
+skinparam rectangle {
+    BackgroundColor #F8F9FA
+    BorderColor #DEE2E6
+}
+
+skinparam component {
+    BackgroundColor #FFFFFF
+    BorderColor #6C757D
+}
+
+skinparam database {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+}
+
+' ============================================
+' Control Plane
+' ============================================
+rectangle "Control Plane" as cp #E8F5E9 {
+    component "kube-scheduler\n(topology-aware)" as sched #C8E6C9
+    component "kube-apiserver" as api #C8E6C9
+
+    rectangle "DRA API Objects" as dra_api #FFFFFF {
+        component "DeviceClass\n(CEL selectors)" as dc
+        component "ResourceSlice\n(discovered NICs)" as rs
+        component "ResourceClaim\n(pod request)" as rc
+    }
+}
+
+' ============================================
+' Node: endor (decode)
+' ============================================
+rectangle "Node: endor" as node_endor #FFF3E0 {
+    component "DRANet\nDaemonSet" as dranet_e #FFE0B2
+    component "containerd\n+ NRI plugin" as cri_e #FFE0B2
+    component "CNI\n(Flannel)" as cni_e #FFE0B2
+
+    rectangle "Decode Pod" as decode_pod #E3F2FD {
+        component "vLLM\n(RTX 3060)" as vllm_d #BBDEFB
+        component "eth0\n10.42.0.40" as eth_d #FFFFFF
+        component "enp65s0np0\n10.0.0.1\n(RDMA)" as rdma_d #E1BEE7
+    }
+}
+
+' ============================================
+' Node: lab-host (prefill)
+' ============================================
+rectangle "Node: lab-host" as node_lab #FFF3E0 {
+    component "DRANet\nDaemonSet" as dranet_l #FFE0B2
+    component "containerd\n+ NRI plugin" as cri_l #FFE0B2
+    component "CNI\n(Flannel)" as cni_l #FFE0B2
+
+    rectangle "Prefill Pod" as prefill_pod #E3F2FD {
+        component "vLLM\n(T4)" as vllm_p #BBDEFB
+        component "eth0\n10.42.1.62" as eth_p #FFFFFF
+        component "ens1np0\n10.0.0.2\n(RDMA)" as rdma_p #E1BEE7
+    }
+}
+
+' ============================================
+' Physical Network
+' ============================================
+rectangle "25GbE DAC\nDirect Connect" as dac #F3E5F5
+
+' ============================================
+' Control Plane Flows (Blue)
+' ============================================
+api -[#1976D2]-> sched : "schedule with\ntopology hints"
+dc -[#1976D2]-> api
+rs -[#1976D2]-> api
+rc -[#1976D2]-> api
+
+dranet_e -[#388E3C,dashed]-> rs : "publish\ndevices"
+dranet_l -[#388E3C,dashed]-> rs : "publish\ndevices"
+
+' ============================================
+' Node Flows (Green) — pod creation
+' ============================================
+sched -[#388E3C]-> cri_e : "RunPodSandbox"
+cri_e -[#388E3C]-> dranet_e : "NRI hook:\nmove NIC\ninto pod netns"
+cni_e -[#388E3C]-> eth_d : "assign\nCNI IP"
+dranet_e -[#388E3C]-> rdma_d : "move NIC +\nconfig IP"
+
+sched -[#388E3C]-> cri_l : "RunPodSandbox"
+cri_l -[#388E3C]-> dranet_l : "NRI hook:\nmove NIC\ninto pod netns"
+cni_l -[#388E3C]-> eth_p : "assign\nCNI IP"
+dranet_l -[#388E3C]-> rdma_p : "move NIC +\nconfig IP"
+
+' ============================================
+' Data Path (Purple) — RDMA KV cache transfer
+' ============================================
+rdma_p -[#7B1FA2,bold]-> dac : "NIXL/UCX"
+dac -[#7B1FA2,bold]-> rdma_d : "RDMA\nKV xfer"
+
+' ============================================
+' Notes
+' ============================================
+note right of dc
+    CEL: rdma == true
+    && virtual == false
+end note
+
+note bottom of decode_pod
+    Both interfaces visible:
+    eth0 (service traffic)
+    enp65s0np0 (RDMA)
+end note
+
+note right of dac
+    23.14 Gbps
+    1.27 usec latency
+end note
+
+note bottom of rc
+    Selects NIC by ifName,
+    configures IP address
+end note
+
+@enduml

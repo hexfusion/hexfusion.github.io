@@ -6,6 +6,10 @@ tags: ["llm-d", "rdma", "kubernetes", "dranet", "dra", "bare-metal", "networking
 summary: "hostNetwork is the default recommendation for RDMA in Kubernetes. It breaks disaggregated inference. DRANet replaces it with DRA-based NIC assignment and fixes the problem cleanly."
 ---
 
+## Architecture
+
+![DRANet Architecture](/images/dranet-architecture.svg)
+
 ## Quick Architecture Reference
 
 ```
