@@ -132,7 +132,21 @@ A few things I'd try before calling this adapter done:
 - Better data quality I skipped manual review, and there's definitely noise in the 41k pairs
 - Targeted prompts in the training set the leader election and gRPC failures suggest those patterns aren't well-represented in the data
 
-Part 3 will cover the InstructLab run and the comparison.
+Part 3 will cover synthetic data generation using Red Hat's [SDG Hub](https://github.com/Red-Hat-AI-Innovation-Team/sdg_hub) and training with [Training Hub](https://github.com/Red-Hat-AI-Innovation-Team/training_hub).
+
+## Reproduce It
+
+Same training script as Part 1: [train_qlora.py](/code/lora-go-training/train_qlora.py)
+
+```bash
+# v2 run (RTX 3060, bf16, full dataset)
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+python train_qlora.py \
+  --model Qwen/Qwen2.5-7B-Instruct \
+  --data training_data.jsonl \
+  --output output/v2 \
+  --epochs 1 --max-len 256 --bf16
+```
 
 ## References
 

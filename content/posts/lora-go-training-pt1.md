@@ -191,6 +191,32 @@ My plan is to try the full dataset on the T4 in fp32 first since that's the path
 
 Part 2 will cover whichever path wins and what the adapter actually looks like when it works.
 
+## Reproduce It
+
+**Requirements:** NVIDIA GPU (12GB+), Python 3.11, CUDA, Go 1.21+
+
+```bash
+pip install 'transformers<5.0' peft trl bitsandbytes datasets torch
+```
+
+Training script: [train_qlora.py](/code/lora-go-training/train_qlora.py)
+
+```bash
+# v1 run (T4, fp32, 5k subsample)
+python train_qlora.py \
+  --model Qwen/Qwen2.5-7B-Instruct \
+  --data training_data.jsonl \
+  --output output/v1 \
+  --epochs 1 --max-samples 5000
+
+# Serve adapter
+python -m vllm.entrypoints.openai.api_server \
+  --model Qwen/Qwen2.5-7B-Instruct-AWQ \
+  --enable-lora --lora-modules go-adapter=/path/to/adapter
+```
+
+Training data was extracted from public Go repos using `go/ast` to pull every documented function as an instruction/output pair. Any JSONL file with `instruction` and `output` fields works.
+
 ## References
 
 - [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685) Hu et al., 2021. The original paper.
